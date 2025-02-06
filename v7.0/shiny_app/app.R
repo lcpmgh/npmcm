@@ -2,6 +2,7 @@
 # Version:
 #          v2: 2021.05.01
 #          v3: 2022.01.29   Switch to REmap package (from rgdal package)
+#          v4：2025.02.06   大改，简化包、更改布局、添加单位历年数据等
 
 ##### packages #####
 library(shiny)
@@ -12,7 +13,6 @@ library(magrittr)
 library(htmlwidgets)
 library(shinyWidgets)
 library(DT)
-library(echarts4r)
 library(jsonlite)
 
 ##### ui #####
@@ -84,6 +84,14 @@ server <- function(input, output, session){
     if('三等奖' %in% x) y3 <- '三等奖'
     y <- paste(na.omit(c(y1, y2, y3)), collapse = '、')
     return(y)
+  }
+  to_list_data <- function(df){
+    # ec.int画地图，将df转为list
+    # df第一列必须为provi，第二列必须为value
+    data_list <- lapply(1:nrow(df), function(i) {
+      list(name = df$provi[i], value = df$value[i])
+    })
+    return(data_list)
   }
   # data
   data_team   <- my_read_csv("2-data_total.csv") %>% .[, A_type:=factor(A_type, levels = c('一等奖','二等奖','三等奖','成功参与奖'), order = T)]
@@ -491,7 +499,7 @@ server <- function(input, output, session){
       h6(sprintf('（统计区间：%d-%d年，统计奖项：%s，展示前%d项）', 
                  input$p2_input_Iyear[1], input$p2_input_Iyear[2], trans(input$p2_input_Atype), input$p2_input_Ditem)),
       h3("各省获奖人次"),
-      echarts4rOutput("p2_plot_Pmember", height = "800px", width = "100%"),
+      ecs.output("p2_plot_Pmember", height = "800px", width = "100%"),
       h6(sprintf('（统计区间：%d-%d年，统计奖项：%s）', 
                  input$p2_input_Iyear[1], input$p2_input_Iyear[2], trans(input$p2_input_Atype))),
     )
@@ -603,7 +611,7 @@ server <- function(input, output, session){
   })
   
   # p2图3，各省获奖人次
-  output$p2_plot_Pmember <- renderEcharts4r({
+  output$p2_plot_Pmember <- ecs.render({
     if (length(input$p2_input_Atype) == 0) {
       sAtype <- c("一等奖", "二等奖", "三等奖")
     } else {
@@ -619,24 +627,62 @@ server <- function(input, output, session){
       data.table(provi = names(p2_data3), value = as.vector(p2_data3))
     }
     df_plot <- tdf_plot[data_province, on="provi"] %>% .[is.na(value), value:=0]
-    df_plot %>%
-      e_charts(provi) %>%
-      e_map_register("china", geojson) %>%
-      e_map(value, map = "china") %>%
-      e_visual_map(
-        value, 
-        inRange = list(color = c("#ECF9FF", "#5470C6")),
-        right = "100px",
-        top = "45%",
-        orient = "vertical",
-        itemWidth = 20,
-        itemHeight = 250
-      ) %>%
-      e_tooltip(formatter = htmlwidgets::JS("
-        function(params) {
-          return params.name + ': ' + params.value + '人次';
-        }
-      "))
+    
+    # 画图
+    ecplot <- ec.init(
+      tooltip = list(
+        trigger = "item",
+        formatter = htmlwidgets::JS("
+      function(params) {
+        return params.name + ': ' + params.value + '人次';
+      }
+    ")
+      ),
+      toolbox = list(
+        show = TRUE,
+        orient = "vertical",  # 设置为垂直
+        left = "left",       # 设置图例位置在右侧
+        top = "45%",          # 设置距离顶部的距离
+        feature = list(
+          dataView = list(readOnly = FALSE),
+          restore = list(),
+          saveAsImage = list()
+        )
+      ),
+      visualMap = list(
+        min = 0,
+        max = max(df_plot$value),
+        # inRange = list(color = c("#ECF9FF", "#5470C6")),  # 调整颜色范围
+        inRange = list(color = c("lightskyblue", "yellow", "orangered")),
+        orient = "vertical",  # 垂直显示
+        right = "100px",  # 设置右侧的偏移
+        top = "45%",  # 设置距离顶部的偏移
+        itemWidth = 20,  # 设置每个项的宽度
+        itemHeight = 250,  # 设置每个项的高度
+        calculable = TRUE  # 可计算范围
+      ),
+      series = list(
+        list(
+          name = "china-map",
+          type = "map",
+          map = "china",
+          label = list(
+            show = TRUE,
+            formatter = htmlwidgets::JS("
+          function(params) {
+            if (params.name == '南海诸岛' || params.name == '十段线') {
+              return '';  // 返回空字符串，隐藏这些标签
+            }
+            return params.name;
+          }
+        ")
+          ),
+          data = to_list_data(df_plot)
+        )
+      )
+    )
+    ecplot$x$registerMap <- list(list(mapName= 'china', geoJSON= geojson))
+    ecplot
   })
   
   ##### p3 成员连续获奖 #####
@@ -670,7 +716,7 @@ server <- function(input, output, session){
       h6(sprintf('（统计区间：%d-%d年，统计奖项：%s，展示前%d项）', 
                  input$p3_input_Iyear[1], input$p3_input_Iyear[2], trans(input$p3_input_Atype), input$p3_input_Ditem)),
       h3(sprintf('各省连续%d-%d次获奖人数', input$p3_Stime[1], input$p3_Stime[2])),
-      echarts4rOutput("p3_plot_Pseries", height = "800px", width = "100%"),
+      ecs.output("p3_plot_Pseries", height = "800px", width = "100%"),
       h6(sprintf('（统计区间：%d-%d年，统计奖项：%s）', 
                  input$p3_input_Iyear[1], input$p3_input_Iyear[2], trans(input$p3_input_Atype)))
     )
@@ -757,7 +803,7 @@ server <- function(input, output, session){
   })
   
   # p3图2，各省连续获奖人数
-  output$p3_plot_Pseries <- renderEcharts4r({
+  output$p3_plot_Pseries <- ecs.render({
     if (length(input$p3_input_Atype) == 0) {
       sAtype <- c("一等奖", "二等奖", "三等奖")
     } else {
@@ -773,24 +819,62 @@ server <- function(input, output, session){
       data.table(provi = names(p3_data2), value = as.vector(p3_data2))
     } 
     df_plot <- tdf_plot[data_province, on="provi"] %>% .[is.na(value), value:=0]
-    df_plot %>%
-      e_charts(provi) %>%
-      e_map_register("china", geojson) %>%
-      e_map(value, map = "china") %>%
-      e_visual_map(
-        value, 
-        inRange = list(color = c("#ECF9FF", "#5470C6")),
-        right = "100px",
-        top = "45%",
-        orient = "vertical",
-        itemWidth = 20,
-        itemHeight = 250
-      ) %>%
-      e_tooltip(formatter = htmlwidgets::JS("
-        function(params) {
-          return params.name + ': ' + params.value + '人';
-        }
-      "))
+    
+    # 画图
+    ecplot <- ec.init(
+      tooltip = list(
+        trigger = "item",
+        formatter = htmlwidgets::JS("
+      function(params) {
+        return params.name + ': ' + params.value + '人次';
+      }
+    ")
+      ),
+      toolbox = list(
+        show = TRUE,
+        orient = "vertical",  # 设置为垂直
+        left = "left",       # 设置图例位置在右侧
+        top = "45%",          # 设置距离顶部的距离
+        feature = list(
+          dataView = list(readOnly = FALSE),
+          restore = list(),
+          saveAsImage = list()
+        )
+      ),
+      visualMap = list(
+        min = 0,
+        max = max(df_plot$value),
+        # inRange = list(color = c("#ECF9FF", "#5470C6")),  # 调整颜色范围
+        inRange = list(color = c("lightskyblue", "yellow", "orangered")),
+        orient = "vertical",  # 垂直显示
+        right = "100px",  # 设置右侧的偏移
+        top = "45%",  # 设置距离顶部的偏移
+        itemWidth = 20,  # 设置每个项的宽度
+        itemHeight = 250,  # 设置每个项的高度
+        calculable = TRUE  # 可计算范围
+      ),
+      series = list(
+        list(
+          name = "china-map",
+          type = "map",
+          map = "china",
+          label = list(
+            show = TRUE,
+            formatter = htmlwidgets::JS("
+          function(params) {
+            if (params.name == '南海诸岛' || params.name == '十段线') {
+              return '';  // 返回空字符串，隐藏这些标签
+            }
+            return params.name;
+          }
+        ")
+          ),
+          data = to_list_data(df_plot)
+        )
+      )
+    )
+    ecplot$x$registerMap <- list(list(mapName= 'china', geoJSON= geojson))
+    ecplot
   })
   
   ##### p4 获奖名单 #####
