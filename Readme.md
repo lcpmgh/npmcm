@@ -25,19 +25,19 @@
 
 1. 数据库查询
 
-![shiny_app_page_1](https://raw.githubusercontent.com/lcpmgh/NPMCM/master/v6.0/shiny_preview/shiny_app_page_1.png)
+![shiny_app_page_1](https://raw.githubusercontent.com/lcpmgh/NPMCM/master/v7.0/shiny_preview/shiny_app_page_1.png)
 
 2. 队伍获奖统计
 
-![shiny_app_page_2](https://raw.githubusercontent.com/lcpmgh/NPMCM/master/v6.0/shiny_preview/shiny_app_page_2.png)
+![shiny_app_page_2](https://raw.githubusercontent.com/lcpmgh/NPMCM/master/v7.0/shiny_preview/shiny_app_page_2.png)
 
 3. 个人获奖统计
 
-![shiny_app_page_3](https://raw.githubusercontent.com/lcpmgh/NPMCM/master/v6.0/shiny_preview/shiny_app_page_3.png)
+![shiny_app_page_3](https://raw.githubusercontent.com/lcpmgh/NPMCM/master/v7.0/shiny_preview/shiny_app_page_3.png)
 
 4. 个人连续获奖统计
 
-![shiny_app_page_4](https://raw.githubusercontent.com/lcpmgh/NPMCM/master/v6.0/shiny_preview/shiny_app_page_4.png)
+![shiny_app_page_4](https://raw.githubusercontent.com/lcpmgh/NPMCM/master/v7.0/shiny_preview/shiny_app_page_4.png)
 
 ---
 
