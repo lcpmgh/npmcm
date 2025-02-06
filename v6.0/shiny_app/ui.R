@@ -11,8 +11,12 @@ library(magrittr)
 library(ECharts2Shiny)
 library(shinyWidgets)
 library(ggplot2)
-library(REmap)
+# library(REmap)
 library(DT)
+library(echarts4r)
+library(echarts4r.maps)
+library(jsonlite)
+
 
 ##### 2. ui function #####
 ui <- fluidPage(
@@ -29,18 +33,20 @@ ui <- fluidPage(
               tabPanel(title = '个人连续获奖', uiOutput("ui_p41"), uiOutput("ui_p42"))
               ),
   tags$hr(),
-  tags$div(align = "center", 
-           tags$p("\ua9 2021-2022, LIANG Chen, Institute of Mountain Hazards and Environment, CAS. All rights reserved.", style="height:8px"),
-           actionLink(inputId = "", label = "Github", icon = icon("github"), onclick ="window.open('https://github.com/lcpmgh/NPMCM')"),
-           tags$p("  ", style = "display:inline;white-space:pre"),
-           tags$p("Email: lcpmgh@gmail.com", style="display:inline;white-space:pre"),  
+  tags$div(align = "center", style = "margin-bottom: 10px;",
+           tags$p("\ua9 2021-2024, Lcpmgh, All rights reserved.", style="height:8px"),
+           tags$div(align = "center",
+                    actionLink(inputId = "", label = "lcpmgh ", icon = icon("github"), onclick ="window.open('https://github.com/lcpmgh')"),
+                    tags$p("  ", style = "display:inline;white-space:pre"),
+                    actionLink(inputId = "", label = "lcpmgh@gmail.com", icon = icon("envelope"), onclick ="window.location.href='mailto:lcpmgh@gmail.com'"),
+                    tags$p("  ", style = "display:inline;white-space:pre"),
+                    actionLink(inputId = "", label = "lcpmgh.com", icon = icon("home"), onclick ="window.location.href='http://lcpmgh.com/'")
+           ),
            tags$div(align = "center",
                     tags$a("冀ICP备2022003075号", target="_blank", href="https://beian.miit.gov.cn", style="color:#06c; display:inline;"),
                     tags$p("  ", style = "display:inline;white-space:pre"),
-                    tags$img(src="gaba.png"),
+                    # tags$img(src="gaba.png"),
                     tags$a("川公网安备51010702002736", target="_blank", href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51010702002736", style="color:#06c; display:inline;")
            )
   )
-  
-
 )

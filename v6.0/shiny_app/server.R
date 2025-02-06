@@ -22,6 +22,7 @@ server <- function(input, output){
   # data
   data_team   <- my_read_csv("2-total_data.csv") %>% .[, A_type:=factor(A_type, levels = c('一等奖','二等奖','三等奖','成功参与奖'), order = T)]
   data_member <- my_read_csv("5-member_data.csv") %>% .[, A_type:=factor(A_type, levels = c('一等奖','二等奖','三等奖'), order = T)]
+  geojson <- read_json("./data/china_province.json")
   
   ##### 1. Page1 #####
   output$ui_p11 <- renderUI({
@@ -168,7 +169,7 @@ server <- function(input, output){
       h6(sprintf('（统计区间：%d-%d年，统计奖项：%s）', input$p3_input2[1], input$p3_input2[2], trans(input$p3_input1)), align = "right"),
       tags$hr(),
       h3('各省获奖人次', align = "center"), 
-      REmapOutput(outputId = "p3_plot2"),
+      echarts4rOutput(outputId = "p3_plot2"),
       h6(sprintf('（统计区间：%d-%d年，统计奖项：%s）', input$p3_input2[1], input$p3_input2[2], trans(input$p3_input1)), align = "right")
     )
   })
@@ -191,64 +192,77 @@ server <- function(input, output){
             plot.caption = element_text(size = 15), 
             text = element_text(family = 'myFont'))
   })
-  output$p3_plot2 <- renderREmap({
-    tdata <- data.table(Province = c("北京","天津","上海","重庆","河北","山西","辽宁","吉林","黑龙江","江苏","浙江","安徽","福建","江西","山东","河南",
-                                     "湖北","湖南","广东","海南","四川","贵州","云南","陕西","甘肃","青海","台湾","内蒙古","广西","西藏","宁夏","新疆", 
-                                     "香港","澳门" ))
-    p3_data2 <- data_member %>% 
-      .[Country == "中国" & A_type %in% input$p3_input1 & Year>=input$p3_input2[1] & Year<=input$p3_input2[2], 10] %>%
-      table() %>% 
-      as.data.table() %>% 
-      set_colnames(c("Province", "Freq")) %>% 
-      .[tdata, on = "Province"] %>% 
-      .[is.na(Freq), Freq:=0]
-    remapC(data = p3_data2)
+  output$p3_plot2 <- renderEcharts4r({
+    data <- copy(data_member) %>%  # 读取数据
+      .[Country == "中国" & A_type %in% input$p3_input1 & Year>=input$p3_input2[1] & Year<=input$p3_input2[2],] %>% 
+      .[,Province] %>%                       # 提取省份
+      table() 
+    # 生成画图数据
+    
+    if(nrow(data) == 0){
+      df_plot <- data.frame(provi="NA", value=0)
+    } else{
+      df_plot <- data.table(provi = names(data), value = as.vector(data))
+    }
+    
+     
+    # 画图
+    df_plot %>%
+      e_charts(provi) %>%
+      e_map_register("china", geojson) %>%
+      e_map(value, map = "china") %>%
+      e_visual_map(value, inRange = list(color = c("#ECF9FF", "#6196FD"))) %>%
+      e_tooltip(formatter = htmlwidgets::JS("
+        function(params) {
+          return params.name + ': ' + params.value;
+        }
+      ")) 
   })
   
   ##### 4. Page4 #####
   output$ui_p41 <- renderUI({
-    dropdownButton(tags$h4(tags$b("参数选项")), 
-                   circle = T, 
-                   status = "success", 
-                   icon = icon("cog"), 
+    dropdownButton(tags$h4(tags$b("参数选项")),
+                   circle = T,
+                   status = "success",
+                   icon = icon("cog"),
                    width = "300px",
                    tooltip = tooltipOptions(title = "参数选项"),
-                   awesomeCheckboxGroup(inputId = "p4_input1", 
+                   awesomeCheckboxGroup(inputId = "p4_input1",
                                         label = "获奖类型",
                                         choices = c("一等奖", "二等奖", "三等奖"),
-                                        selected = c("一等奖", "二等奖", "三等奖"), 
+                                        selected = c("一等奖", "二等奖", "三等奖"),
                                         inline = T),
-                   sliderTextInput(inputId = "p4_input2", 
+                   sliderTextInput(inputId = "p4_input2",
                                    label = "连续获奖次数",
-                                   choices = 1:max(data_member$Series), 
+                                   choices = 1:max(data_member$Series),
                                    selected = c(1, max(data_member$Series))),
-                   sliderTextInput(inputId = "p4_input3", 
-                                   label = "年份区间", 
-                                   choices = unique(data_team$Year), 
+                   sliderTextInput(inputId = "p4_input3",
+                                   label = "年份区间",
+                                   choices = unique(data_team$Year),
                                    selected = c(min(unique(data_team$Year)), max(unique(data_team$Year)))),
-                   sliderTextInput(inputId = "p4_input4", 
+                   sliderTextInput(inputId = "p4_input4",
                                    label = "显示数量",
-                                   choices = 1:25, 
+                                   choices = 1:25,
                                    selected = 10))
   })
   output$ui_p42 <- renderUI({
     tagList(
-      h3(sprintf('连续%d-%d次获奖人数最多的%d个培养单位', input$p4_input2[1], input$p4_input2[2], input$p4_input4), align = "center"), 
+      h3(sprintf('连续%d-%d次获奖人数最多的%d个培养单位', input$p4_input2[1], input$p4_input2[2], input$p4_input4), align = "center"),
       plotOutput(outputId = "p4_plot1", width = '100%', height = '600px'),
       h6(sprintf('（统计区间：%d-%d年，统计奖项：%s）', input$p4_input3[1], input$p4_input3[2], trans(input$p4_input1)), align = "right"),
       tags$hr(),
-      h3(sprintf('各省连续%d-%d次获奖人数', input$p4_input2[1], input$p4_input2[2]), align = "center"), 
-      REmapOutput(outputId = "p4_plot2"),
+      h3(sprintf('各省连续%d-%d次获奖人数', input$p4_input2[1], input$p4_input2[2]), align = "center"),
+      echarts4rOutput(outputId = "p4_plot2"),
       h6(sprintf('（统计区间：%d-%d年，统计奖项：%s）', input$p4_input3[1], input$p4_input3[2], trans(input$p4_input1)), align = "right")
     )
   })
   output$p4_plot1 <- renderPlot({
-    p4_data1 <- data_member %>% 
+    p4_data1 <- data_member %>%
       .[A_type %in% input$p4_input1 & Series>=input$p4_input2[1] & Series<=input$p4_input2[2] & Year>=input$p4_input3[1] & Year<=input$p4_input3[2], ] %>%
-      .[, .(Freq=length(M_unique)), by = .(Unit)] %>% 
-      setorder(-Freq) %>% 
-      .[!is.na(Unit), ] %>% 
-      .[1:min(nrow(.), input$p4_input4), ] %>% 
+      .[, .(Freq=length(M_unique)), by = .(Unit)] %>%
+      setorder(-Freq) %>%
+      .[!is.na(Unit), ] %>%
+      .[1:min(nrow(.), input$p4_input4), ] %>%
       na.omit()
     if(nrow(p4_data1) == 0){
       ggplot(data = NULL, aes(x=1, y=2, label = "无数据")) + geom_text(size = 15) + theme_void()
@@ -262,27 +276,38 @@ server <- function(input, output){
         theme_light()+
         theme(axis.text = element_text(size = 18),
               axis.title = element_text(size = 20),
-              plot.caption = element_text(size = 15), 
+              plot.caption = element_text(size = 15),
               text = element_text(family = 'myFont'))
     }
   })
-  output$p4_plot2 <- renderREmap({
-    tdata <- data.table(Province = c("北京","天津","上海","重庆","河北","山西","辽宁","吉林","黑龙江","江苏","浙江","安徽","福建","江西","山东","河南",
-                                     "湖北","湖南","广东","海南","四川","贵州","云南","陕西","甘肃","青海","台湾","内蒙古","广西","西藏","宁夏","新疆", 
-                                     "香港","澳门" ))
-    p4_data2_t <- data_member %>% 
-      .[Country == "中国" & A_type %in% input$p4_input1 & Series>=input$p4_input2[1] & Series<=input$p4_input2[2] & Year>=input$p4_input3[1] & Year<=input$p4_input3[2], 10] %>%
+  output$p4_plot2 <- renderEcharts4r({
+    p4_data2_t <- copy(data_member)  %>%
+      .[Country == "中国" & A_type %in% input$p4_input1 & Series>=input$p4_input2[1] & Series<=input$p4_input2[2] & Year>=input$p4_input3[1] & Year<=input$p4_input3[2],] %>%
+      .[,Province] %>%                       # 提取省份
       table() 
+
+     
     if(nrow(p4_data2_t) == 0){
-      p4_data2 <- data.frame(tdata, value=0)
+      df_plot <- data.table(provi="NA", value=0)
     } else{
-      p4_data2 <- p4_data2_t %>% 
-        as.data.table() %>% 
-        set_colnames(c("Province", "Freq")) %>% 
-        .[tdata, on = "Province"] %>% 
-        .[is.na(Freq), Freq:=0]
+      df_plot <- data.table(provi = names(p4_data2_t), value = p4_data2_t %>% as.vector())
     }
-    remapC(data = p4_data2)
+     
+ 
+    # 画图
+    df_plot %>%
+      e_charts(provi) %>%
+      e_map_register("china", geojson) %>%
+      e_map(value, map = "china") %>%
+      e_visual_map(value, inRange = list(color = c(c("#ECF9FF", "#6196FD")))) %>%
+      e_tooltip(formatter = htmlwidgets::JS("
+        function(params) {
+          return params.name + ': ' + params.value;
+        }
+      ")) 
+    
+    
+    
   })
   
 }
