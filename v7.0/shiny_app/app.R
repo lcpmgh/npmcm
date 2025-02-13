@@ -713,12 +713,14 @@ server <- function(input, output, session){
     tagList(
       h3(sprintf('连续%d-%d次获奖者所在培养单位', input$p3_Stime[1], input$p3_Stime[2])),
       ecs.output("p3_plot_Stime", height = max("400px", input$p3_input_Ditem*30)),  #动态调整图高度
-      h6(sprintf('（统计区间：%d-%d年，统计奖项：%s，展示前%d项）', 
-                 input$p3_input_Iyear[1], input$p3_input_Iyear[2], trans(input$p3_input_Atype), input$p3_input_Ditem)),
+      h6(sprintf('（统计区间：%d-%d年，统计奖项：%s，连续获奖次数：%d-%d，展示前%d项）', 
+                 input$p3_input_Iyear[1], input$p3_input_Iyear[2], trans(input$p3_input_Atype), 
+                 input$p3_Stime[1], input$p3_Stime[2], input$p3_input_Ditem)),
       h3(sprintf('各省连续%d-%d次获奖人数', input$p3_Stime[1], input$p3_Stime[2])),
       ecs.output("p3_plot_Pseries", height = "800px", width = "100%"),
-      h6(sprintf('（统计区间：%d-%d年，统计奖项：%s）', 
-                 input$p3_input_Iyear[1], input$p3_input_Iyear[2], trans(input$p3_input_Atype)))
+      h6(sprintf('（统计区间：%d-%d年，统计奖项：%s，连续获奖次数：%d-%d）', 
+                 input$p3_input_Iyear[1], input$p3_input_Iyear[2], trans(input$p3_input_Atype),
+                 input$p3_Stime[1], input$p3_Stime[2]))
     )
   })
   
